@@ -2725,3 +2725,79 @@ fn chunked_bounds_cut_text_where_no_relocation_straddles() {
     lib.text.relocs.swap(0, 1);
     assert!(text_bounds(&lib).is_empty());
 }
+
+#[test]
+fn build_placed_lib_skips_note_sections() {
+    // GCC with `-mbranch-protection=standard` (the default on e.g. Debian's arm64 builds) emits an
+    // allocated `.note.gnu.property` (`SHT_NOTE`) marking the object BTI/PAC-compatible. It is
+    // loader metadata that no code references, so the placed model skips it like `.eh_frame`.
+    use crate::trusted_common::{ObjSymbol, SymBind, SymKind, SymSection};
+
+    let code: Vec<u8> = [0xd503_233fu32, 0xd503_23bfu32, 0xd65f_03c0u32] // paciasp; autiasp; ret
+        .iter()
+        .flat_map(|w| w.to_le_bytes())
+        .collect();
+    // NT_GNU_PROPERTY_TYPE_0 with GNU_PROPERTY_AARCH64_FEATURE_1_AND = BTI | PAC.
+    let note: Vec<u8> = [
+        4u32,
+        16,
+        5,
+        0x0055_4e47, // namesz, descsz, type, "GNU\0"
+        0xc000_0000,
+        4,
+        3,
+        0, // pr_type, pr_datasz, BTI | PAC, padding
+    ]
+    .iter()
+    .flat_map(|w| w.to_le_bytes())
+    .collect();
+    let obj = crate::trusted_common::ObjObject {
+        name: "bti.o".into(),
+        sections: vec![
+            ObjSection {
+                name: ".text.entry".into(),
+                sh_type: object::elf::SHT_PROGBITS,
+                sh_flags: object::elf::SHF_ALLOC as u64 | object::elf::SHF_EXECINSTR as u64,
+                addr: 0,
+                align: 4,
+                entsize: 0,
+                size: code.len() as u64,
+                file_offset: 0,
+                bytes: code.clone(),
+                relocs: vec![],
+                is_rel: false,
+                elf_index: 1,
+            },
+            ObjSection {
+                name: ".note.gnu.property".into(),
+                sh_type: object::elf::SHT_NOTE,
+                sh_flags: object::elf::SHF_ALLOC as u64,
+                addr: 0,
+                align: 8,
+                entsize: 0,
+                size: note.len() as u64,
+                file_offset: 0,
+                bytes: note,
+                relocs: vec![],
+                is_rel: false,
+                elf_index: 2,
+            },
+        ],
+        symbols: vec![ObjSymbol {
+            name: "entry".into(),
+            raw_name: "entry".into(),
+            kind: SymKind::Func,
+            bind: SymBind::Global,
+            vis: 0,
+            sec: SymSection::Sec(0),
+            value: 0,
+            size: 12,
+        }],
+        groups: vec![],
+        elf_bytes: vec![],
+    };
+
+    let lib = build_placed_lib("bti", &[obj], &["entry".into()]).unwrap();
+    assert!(lib.data.is_empty());
+    assert_eq!(lib.text.code, code);
+}

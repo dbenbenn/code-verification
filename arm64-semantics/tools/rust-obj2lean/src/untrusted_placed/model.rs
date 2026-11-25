@@ -481,7 +481,9 @@ fn build_placed_lib_inner(
     let mut align = 4u64;
     for (oi, o) in objs.iter().enumerate() {
         for (si, s) in o.sections.iter().enumerate() {
-            if s.sh_flags & SHF_ALLOC == 0 || s.name == ".eh_frame" {
+            // ELF notes (e.g. `.note.gnu.property`, the AArch64 BTI/PAC marker GCC emits with
+            // -mbranch-protection) are loader metadata that no code references.
+            if s.sh_flags & SHF_ALLOC == 0 || s.name == ".eh_frame" || s.sh_type == elf::SHT_NOTE {
                 continue;
             }
             if is_text(s) {
